@@ -1,0 +1,73 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/localization/localization_dock.gd" id="1_script"]
+
+[node name="LocalizationDock" type="VBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="LabelStatistics" type="Label" parent="."]
+layout_mode = 2
+text = "Statistics"
+
+[node name="ItemCount" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ItemCount"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Item Count"
+
+[node name="LineEdit" type="LineEdit" parent="ItemCount"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "0"
+alignment = 2
+editable = false
+
+[node name="HSeparator" type="HSeparator" parent="."]
+layout_mode = 2
+
+[node name="LabelScan" type="Label" parent="."]
+layout_mode = 2
+text = "Scan"
+
+[node name="ScanPath" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="LineEdit" type="LineEdit" parent="ScanPath"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "res://path/to/resources"
+
+[node name="ButtonScan" type="Button" parent="ScanPath"]
+layout_mode = 2
+text = "スキャン"
+
+[node name="ScanResult" type="Label" parent="."]
+layout_mode = 2
+text = ""
+
+[node name="HSeparator2" type="HSeparator" parent="."]
+layout_mode = 2
+
+[node name="LabelRemove" type="Label" parent="."]
+layout_mode = 2
+text = "Remove"
+
+[node name="RemoveItems" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="LineEdit" type="LineEdit" parent="RemoveItems"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Prefix"
+
+[node name="Button" type="Button" parent="RemoveItems"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "削除"
