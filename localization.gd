@@ -1,11 +1,14 @@
 ## ゲーム中のテキストを一括管理するためのクラス。
-## TSVファイルベースの多言語テキスト管理を提供する。
+## TSVファイルベースの多言語テキスト管理と、言語別Theme切り替えを提供する。
 @tool
 extends Node
 
 
 ## ファイルに書き出した時に発行されるシグナル。
 signal wrote_file
+
+## 言語が変更されたときに発行されるシグナル。
+signal changed_language
 
 
 enum {
@@ -19,26 +22,10 @@ enum {
 
 ## プロジェクト設定のキー。
 const SETTING_TSV_FILEPATH := "localization/tsv_filepath"
-const SETTING_FONT_PATHS := "localization/font_paths"
-
-## デフォルトのフォントパス。
-const DEFAULT_FONT_PATHS = [
-	"res://Fonts/07LogoTypeGothic7.otf", # Ja
-	"res://Fonts/07LogoTypeGothic7.otf", # En
-	"res://Fonts/NotoSansSC-Regular.ttf", # ZhCh
-	"res://Fonts/NotoSansTC-Regular.ttf", # ZhTw
-	"res://Fonts/NanumGothic-Regular.ttf", # Kr
-]
+const SETTING_THEME_PATHS := "localization/theme_paths"
 
 const DEFAULT_TSV_FILEPATH := "res://language.tsv.txt"
 const LANGUAGE_NAMES = ["Ja", "En", "ZhCh", "ZhTw", "Kr"]
-
-## 言語ごとのフォントパス。プロジェクト設定で上書き可能。
-var font_paths: Array:
-	get:
-		if ProjectSettings.has_setting(SETTING_FONT_PATHS):
-			return ProjectSettings.get_setting(SETTING_FONT_PATHS)
-		return DEFAULT_FONT_PATHS
 
 ## TSVファイルのパス。プロジェクト設定で上書き可能。
 var tsv_filepath: String:
@@ -47,10 +34,23 @@ var tsv_filepath: String:
 			return ProjectSettings.get_setting(SETTING_TSV_FILEPATH)
 		return DEFAULT_TSV_FILEPATH
 
+## 言語ごとの Theme リソースパス。プロジェクト設定で設定する。
+## 未設定の場合は Theme 切り替えは行わない。
+var theme_paths: Array:
+	get:
+		if ProjectSettings.has_setting(SETTING_THEME_PATHS):
+			return ProjectSettings.get_setting(SETTING_THEME_PATHS)
+		return []
+
 var _strings = {}
 var _coverage = []
 
-var language_type = LANGUAGE_JA
+## 現在の言語設定。セッターで Theme 切り替えとシグナル発行を行う。
+var language_type = LANGUAGE_JA:
+	set(value):
+		language_type = value
+		_apply_language_theme()
+		changed_language.emit()
 
 ## 編集されたかどうかのフラグ。
 var editted: bool = false
@@ -71,6 +71,25 @@ func _process(_delta: float) -> void:
 		update_coverage()
 		write_file()
 		editted = false
+
+
+## 現在の言語に対応する Theme をシーンツリーのルートに適用する。
+func _apply_language_theme():
+	var paths = theme_paths
+	if paths.is_empty():
+		return
+	if language_type < 0 or language_type >= paths.size():
+		return
+	var theme_path: String = paths[language_type]
+	if theme_path.is_empty():
+		return
+	var theme = load(theme_path)
+	if theme == null:
+		printerr("[Localization] failed to load theme: %s" % theme_path)
+		return
+	var tree = get_tree()
+	if tree != null and tree.root != null:
+		tree.root.theme = theme
 
 
 ## TSVファイルからテキストデータを読み込む。

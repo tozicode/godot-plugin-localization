@@ -1,8 +1,8 @@
-## 言語設定によって文字列を変更するラベル。
+## 言語設定によって文字列を変更する RichTextLabel。
 ## フォント・フォントサイズは Theme から自動適用される。
-## text_key を設定しない場合は通常の Label として使用可能（Theme のフォントのみ適用）。
-extends Label
-class_name LocalizedLabel
+## text_key を設定しない場合は通常の RichTextLabel として使用可能（Theme のフォントのみ適用）。
+extends RichTextLabel
+class_name LocalizedRichTextLabel
 
 ## テキストに対応するキー文字列。
 @export
