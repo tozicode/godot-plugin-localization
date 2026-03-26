@@ -83,3 +83,18 @@ placeholder_text = "Prefix"
 layout_mode = 2
 size_flags_horizontal = 3
 text = "削除"
+
+[node name="HSeparator3" type="HSeparator" parent="."]
+layout_mode = 2
+
+[node name="LabelTheme" type="Label" parent="."]
+layout_mode = 2
+text = "Theme"
+
+[node name="ButtonGenerateThemes" type="Button" parent="."]
+layout_mode = 2
+text = "Theme ファイル生成"
+
+[node name="ThemeResult" type="Label" parent="."]
+layout_mode = 2
+text = ""

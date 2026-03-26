@@ -26,13 +26,21 @@ var button_remove: Button = $"RemoveItems/Button"
 @onready
 var label_scan_result: Label = $"ScanResult"
 
+@onready
+var button_generate_themes: Button = $"ButtonGenerateThemes"
+
+@onready
+var label_theme_result: Label = $"ThemeResult"
+
 
 func _ready():
 	button_scan.pressed.connect(on_pressed_button_scan)
 	button_remove.pressed.connect(on_pressed_button_remove)
+	button_generate_themes.pressed.connect(on_pressed_button_generate_themes)
 	Localization.wrote_file.connect(update_statistics)
 	update_statistics()
 	label_scan_result.text = ""
+	label_theme_result.text = ""
 
 
 ## 指定ディレクトリを再帰的にスキャンし、LocalizedString を登録する。
@@ -160,6 +168,32 @@ func on_pressed_button_remove():
 	if prefix.is_empty():
 		return
 	Localization.remove_strings_begins_with(prefix)
+
+
+## theme_paths に対応する Theme ファイルを生成する。
+func on_pressed_button_generate_themes():
+	var paths = Localization.theme_paths  ## 2次元配列
+	var created := 0
+	var skipped := 0
+	for style_paths in paths:
+		for theme_path: String in style_paths:
+			# ディレクトリが存在しなければ作成
+			var dir_path = theme_path.get_base_dir()
+			if not DirAccess.dir_exists_absolute(dir_path):
+				DirAccess.make_dir_recursive_absolute(dir_path)
+			# ファイルが既に存在する場合はスキップ
+			if ResourceLoader.exists(theme_path):
+				skipped += 1
+				continue
+			# 空の Theme リソースを生成して保存
+			var theme = Theme.new()
+			var err = ResourceSaver.save(theme, theme_path)
+			if err == OK:
+				created += 1
+				print("[LocalizationDock] created theme: %s" % theme_path)
+			else:
+				printerr("[LocalizationDock] failed to save theme: %s (error: %d)" % [theme_path, err])
+	label_theme_result.text = "%d 件生成、%d 件スキップ。" % [created, skipped]
 
 
 ## 統計データを更新する。

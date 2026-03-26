@@ -22,9 +22,10 @@ enum {
 
 ## プロジェクト設定のキー。
 const SETTING_TSV_FILEPATH := "localization/tsv_filepath"
-const SETTING_THEME_PATHS := "localization/theme_paths"
+const SETTING_THEME_STYLES := "localization/theme_styles"
 
 const DEFAULT_TSV_FILEPATH := "res://language.tsv.txt"
+const DEFAULT_THEME_STYLES := ["main"]
 const LANGUAGE_NAMES = ["Ja", "En", "ZhCh", "ZhTw", "Kr"]
 
 ## TSVファイルのパス。プロジェクト設定で上書き可能。
@@ -34,16 +35,28 @@ var tsv_filepath: String:
 			return ProjectSettings.get_setting(SETTING_TSV_FILEPATH)
 		return DEFAULT_TSV_FILEPATH
 
-## 言語ごとの Theme リソースパス。プロジェクト設定で設定する。
-## 未設定の場合は Theme 切り替えは行わない。
+## Theme のスタイル種別リスト。プロジェクト設定で上書き可能。
+var theme_styles: Array:
+	get:
+		if ProjectSettings.has_setting(SETTING_THEME_STYLES):
+			return ProjectSettings.get_setting(SETTING_THEME_STYLES)
+		return DEFAULT_THEME_STYLES
+
+## スタイル × 言語 の2次元配列で Theme パスを動的生成する。
+## theme_paths[style_index][language_index] でアクセスする。
 var theme_paths: Array:
 	get:
-		if ProjectSettings.has_setting(SETTING_THEME_PATHS):
-			return ProjectSettings.get_setting(SETTING_THEME_PATHS)
-		return []
+		var result := []
+		for style in theme_styles:
+			var paths := []
+			for lang in LANGUAGE_NAMES:
+				paths.append("res://themes/theme_%s_%s.tres" % [style, lang.to_lower()])
+			result.append(paths)
+		return result
 
 var _strings = {}
 var _coverage = []
+var _themes = {}  ## スタイル名 → Theme の辞書。
 
 ## 現在の言語設定。セッターで Theme 切り替えとシグナル発行を行う。
 var language_type = LANGUAGE_JA:
@@ -63,6 +76,7 @@ func _init():
 
 func _ready():
 	read_file()
+	_apply_language_theme()
 	print("[Localization] initialized. (size = %d)" % _strings.size())
 
 
@@ -73,23 +87,38 @@ func _process(_delta: float) -> void:
 		editted = false
 
 
-## 現在の言語に対応する Theme をシーンツリーのルートに適用する。
+## 現在の言語に対応する全スタイルの Theme を読み込み、ルートに最初のスタイルを適用する。
 func _apply_language_theme():
-	var paths = theme_paths
-	if paths.is_empty():
-		return
-	if language_type < 0 or language_type >= paths.size():
-		return
-	var theme_path: String = paths[language_type]
-	if theme_path.is_empty():
-		return
-	var theme = load(theme_path)
-	if theme == null:
-		printerr("[Localization] failed to load theme: %s" % theme_path)
-		return
-	var tree = get_tree()
-	if tree != null and tree.root != null:
-		tree.root.theme = theme
+	_themes.clear()
+	var paths = theme_paths  ## 2次元配列: [style_index][language_index]
+	var styles = theme_styles
+	for style_i in styles.size():
+		if style_i >= paths.size():
+			break
+		if language_type < 0 or language_type >= paths[style_i].size():
+			continue
+		var theme_path: String = paths[style_i][language_type]
+		if theme_path.is_empty():
+			continue
+		if not ResourceLoader.exists(theme_path):
+			continue
+		var theme = load(theme_path)
+		if theme == null:
+			printerr("[Localization] failed to load theme: %s" % theme_path)
+			continue
+		_themes[styles[style_i]] = theme
+	## 最初のスタイルの Theme をルートに適用する。
+	if styles.size() > 0 and _themes.has(styles[0]):
+		var tree = get_tree()
+		if tree != null and tree.root != null:
+			tree.root.theme = _themes[styles[0]]
+
+
+## 指定のスタイル名に対応する Theme を返す。存在しない場合は null を返す。
+func get_theme(style_name: String) -> Theme:
+	if _themes.has(style_name):
+		return _themes[style_name]
+	return null
 
 
 ## TSVファイルからテキストデータを読み込む。
