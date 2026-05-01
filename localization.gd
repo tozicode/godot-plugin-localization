@@ -219,7 +219,7 @@ func remove_strings_begins_with(prefix: String):
 
 ## 指定のキーに対応する文字列を返す。
 ## 対応する文字列が存在しない場合はエラー文字列を返す。
-## 元データにおける <br> は改行に変換される。
+## 元データにおける <br> およびセミコロン (;) は改行に変換される。
 ## また現在の言語設定に応じた文字列が存在しない場合は、代わりに日本語の文字列を返す。
 func get_string(key: String, substitution = null) -> String:
 	if not _strings.has(key):
@@ -228,7 +228,7 @@ func get_string(key: String, substitution = null) -> String:
 	var idx: int = language_type if language_type < strs.size() else 0
 	if strs[idx] == "":
 		idx = 0
-	var s: String = strs[idx].replace("<br>", "\n")
+	var s: String = strs[idx].replace(";", "\n").replace("<br>", "\n")
 	if substitution != null:
 		for s_from in substitution.keys():
 			s = s.replace(s_from, substitution[s_from])
