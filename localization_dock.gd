@@ -143,23 +143,68 @@ func scan_directory(dirpath: String, key_format: String = "") -> int:
 ## リソース内の LocalizedString プロパティを検出して登録する。
 ## key_format が指定されている場合は text_key を自動命名する。
 ## 登録した件数を返す。
+##
+## ネスト対応: プロパティが Resource なら再帰的に走査し、Array や Dictionary
+## の場合は要素 (Resource / LocalizedString) も走査する。循環参照防止のため
+## visited Dictionary で訪問済み Resource を記録する。
+## これにより、コマンドオブジェクト (DungeonCommand 等) を要素とする
+## Array[Resource] プロパティに埋め込まれた LocalizedString も自動収集できる。
 func scan_resource(resource: Resource, key_format: String = "", basename: String = "", labels: PackedStringArray = PackedStringArray()) -> int:
-	var count := 0
+	if resource == null:
+		return 0
+	var visited :Dictionary = {}
+	var count_ref :Array = [0]
+	_scan_resource_recursive(resource, key_format, basename, labels, visited, count_ref)
+	return count_ref[0]
+
+
+## 再帰下降の本体。visited に訪問済み Resource を記録して循環を防ぐ。
+func _scan_resource_recursive(resource: Resource, key_format: String,
+		basename: String, labels: PackedStringArray,
+		visited: Dictionary, count_ref: Array) -> void:
+	if resource == null or visited.has(resource):
+		return
+	visited[resource] = true
 	for prop in resource.get_property_list():
+		# @export 等の永続化対象プロパティのみ走査する。
+		if not (prop.usage & PROPERTY_USAGE_STORAGE):
+			continue
 		var value = resource.get(prop.name)
-		if value is LocalizedString:
-			if key_format.is_empty():
-				# フォーマット未指定: 既存の text_key をそのまま登録
-				if value.text_key != "_undefined_" and not value.text.is_empty():
-					Localization.register_localized_string(value)
-					count += 1
-			else:
-				# フォーマット指定: text_key を自動命名して登録
-				value.text_key = format_key(key_format, basename, count, labels)
-				if not value.text.is_empty():
-					Localization.register_localized_string(value)
-				count += 1
-	return count
+		_scan_value(value, key_format, basename, labels, visited, count_ref)
+
+
+## 任意の値を走査する。LocalizedString なら登録、Resource なら再帰、
+## Array / Dictionary なら各要素を再帰する。
+func _scan_value(value :Variant, key_format: String, basename: String,
+		labels: PackedStringArray,
+		visited: Dictionary, count_ref: Array) -> void:
+	if value is LocalizedString:
+		_register_one_localized_string(value, key_format, basename, labels, count_ref)
+	elif value is Resource:
+		_scan_resource_recursive(value, key_format, basename, labels, visited, count_ref)
+	elif value is Array:
+		for elem in value:
+			_scan_value(elem, key_format, basename, labels, visited, count_ref)
+	elif value is Dictionary:
+		for k in value:
+			_scan_value(value[k], key_format, basename, labels, visited, count_ref)
+
+
+## LocalizedString 1 件を Localization に登録する。
+## key_format の有無で挙動が分岐する (旧 scan_resource と同等の仕様)。
+func _register_one_localized_string(value :LocalizedString, key_format: String,
+		basename: String, labels: PackedStringArray, count_ref: Array) -> void:
+	if key_format.is_empty():
+		# フォーマット未指定: 既存の text_key をそのまま登録
+		if value.text_key != "_undefined_" and not value.text.is_empty():
+			Localization.register_localized_string(value)
+			count_ref[0] += 1
+	else:
+		# フォーマット指定: text_key を自動命名して登録
+		value.text_key = format_key(key_format, basename, count_ref[0], labels)
+		if not value.text.is_empty():
+			Localization.register_localized_string(value)
+		count_ref[0] += 1
 
 
 ## プレフィックス指定で言語データを削除する。
